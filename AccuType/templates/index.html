@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Speed Test</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='TypeWriting.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Typing Speed Test</h1>
+        <div class="content">
+            <div class="controls">
+                <label>Select Difficulty:</label>
+                <select id="difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+                <button id="startButton" onclick="startTest()">Start</button>
+                <button id="finishButton" onclick="finishTest()" disabled>Finish</button>
+                <button id="resetButton" onclick="resetTest()">Reset</button>
+                <button id="leaderboardButton" onclick="showLeaderboard()">Leaderboard</button>
+                <button id="pauseButton" onclick="pauseTest()" disabled>Pause</button>
+                <button id="resumeButton" onclick="resumeTest()" disabled>Resume</button>
+                <button id="clearButton" onclick="clearText()">Clear Text</button>
+                <button id="timerButton" onclick="toggleTimer()">Show Timer</button>
+            </div>
+            <div id="textToType" class="text-display"></div>
+            <textarea id="textInput" rows="5" placeholder="Start typing here..." disabled></textarea>
+            <div id="realTimeStats"></div>
+            <div id="timer" style="text-align: center; font-size: 20px; color: #666; display: none;"></div>
+        </div>
+        <div id="leaderboardModal" style="display: none;">
+            <div class="leaderboard-box">
+                <h2>Leaderboard</h2>
+                <ul id="leaderboardList"></ul>
+                <button onclick="closeLeaderboard()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let startTime, pauseTime, selectedText = "";
+        let timerInterval;
+        let highestWPM = 0; 
+
+        const easyTexts = [
+            "The quick brown fox jumps over the lazy dog.",
+            "A journey of a thousand miles begins with a single step."
+        ];
+
+        const mediumTexts = [
+            "She sells seashells by the seashore, and the shells she sells are surely seashells.",
+            "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers Peter Piper picked."
+        ];
+
+        const hardTexts = [
+            "How much wood would a woodchuck chuck if a woodchuck could chuck wood? He would chuck as much wood as a woodchuck would if a woodchuck could chuck wood.",
+            "To be, or not to be, that is the question: whether 'tis nobler in the mind to suffer the slings and arrows of outrageous fortune, or to take arms against a sea of troubles and by opposing end them."
+        ];
+
+        function selectText() {
+            const difficulty = document.getElementById('difficulty').value;
+            if (difficulty === "easy") {
+                selectedText = easyTexts[Math.floor(Math.random() * easyTexts.length)];
+            } else if (difficulty === "medium") {
+                selectedText = mediumTexts[Math.floor(Math.random() * mediumTexts.length)];
+            } else {
+                selectedText = hardTexts[Math.floor(Math.random() * hardTexts.length)];
+            }
+            document.getElementById('textToType').innerText = selectedText;
+        }
+
+        function startTest() {
+            selectText();
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('finishButton').disabled = false;
+            document.getElementById('textInput').disabled = false;
+            document.getElementById('textInput').focus();
+            document.getElementById('pauseButton').disabled = false;
+            startTime = new Date();
+            startTimer();
+        }
+
+        function finishTest() {
+            const endTime = new Date();
+            const timeDiff = (endTime - startTime) / 1000;
+            const typedText = document.getElementById('textInput').value;
+            const wordCount = typedText.split(' ').filter(word => word.length > 0).length;
+            const accuracy = calculateAccuracy(typedText, selectedText);
+            const wpm = Math.round(wordCount / (timeDiff / 60));
+
+            // Check if new WPM is a record
+            let recordMessage = '';
+    if (wpm > highestWPM) {
+        highestWPM = wpm;  // Update the highest WPM
+        recordMessage = '🌸🌺🌼 New Record! 🌸🌺🌼';  // Flower emojis for new record
+
+        // Throw flowers!
+        throwFlowers(); // Call function to throw flowers
+    }
+            document.getElementById('realTimeStats').innerHTML = `
+                Time: ${timeDiff.toFixed(2)} seconds<br>
+                WPM: ${wpm} ${recordMessage}<br>
+                Accuracy: ${accuracy.toFixed(2)}%
+            `;
+            
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('finishButton').disabled = true;
+            document.getElementById('textInput').disabled = true;
+            document.getElementById('pauseButton').disabled = true;
+            clearInterval(timerInterval); // Stop the timer
+        }
+        function throwFlowers() {
+    
+    const numberOfFlowers = 5; 
+    for (let i = 0; i < numberOfFlowers; i++) {
+        const flower = document.createElement('div');
+        flower.classList.add('flower');
+        flower.innerText = '🌸';  
+        flower.style.left = `${Math.random() * window.innerWidth}px`; 
+        flower.style.top = `${window.innerHeight}px`; 
+
+       
+        document.body.appendChild(flower);
+
+        setTimeout(() => {
+            flower.remove();
+        }, 2000); 
+    }
+}
+        function calculateAccuracy(typed, original) {
+            const typedWords = typed.split(' ');
+            const originalWords = original.split(' ');
+            let correctWords = 0;
+            for (let i = 0; i < Math.min(typedWords.length, originalWords.length); i++) {
+                if (typedWords[i] === originalWords[i]) {
+                    correctWords++;
+                }
+            }
+            return (correctWords / originalWords.length) * 100;
+        }
+
+        function resetTest() {
+            document.getElementById('textToType').innerText = "";
+            document.getElementById('textInput').value = "";
+            document.getElementById('realTimeStats').innerText = "";
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('finishButton').disabled = true;
+            document.getElementById('textInput').disabled = true;
+            document.getElementById('pauseButton').disabled = true;
+            document.getElementById('resumeButton').disabled = true;
+            clearInterval(timerInterval); // Stop the timer
+            document.getElementById('timer').innerText = ""; // Clear timer
+        }
+
+        function showLeaderboard() {
+    fetch('/leaderboard')
+        .then(response => response.json())
+        .then(data => {
+            const leaderboardList = document.getElementById('leaderboardList');
+            leaderboardList.innerHTML = ""; 
+
+            data.forEach((entry, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${index + 1}. ${entry.wpm.toFixed(2)} WPM - ${entry.accuracy.toFixed(2)}% accuracy`;
+                leaderboardList.appendChild(listItem);
+            });
+
+            document.getElementById('leaderboardModal').style.display = 'block'; 
+        });
+}
+
+        function closeLeaderboard() {
+            const leaderboardBox = document.querySelector('.leaderboard-box');
+            if (leaderboardBox) {
+                leaderboardBox.remove();
+            }
+        }
+
+        function pauseTest() {
+            pauseTime = new Date();
+            document.getElementById('pauseButton').disabled = true;
+            document.getElementById('resumeButton').disabled = false;
+            clearInterval(timerInterval); // Pause the timer
+        }
+
+        function resumeTest() {
+            const currentTime = new Date();
+            const pausedDuration = (currentTime - pauseTime) / 1000;
+            startTime = new Date(startTime.getTime() + pausedDuration * 1000);
+            document.getElementById('pauseButton').disabled = false;
+            document.getElementById('resumeButton').disabled = true;
+            startTimer(); // Resume the timer
+        }
+
+        function clearText() {
+            document.getElementById('textInput').value = "";
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            const currentTime = new Date();
+            const timeDiff = (currentTime - startTime) / 1000;
+            const minutes = Math.floor(timeDiff / 60);
+            const seconds = Math.floor(timeDiff % 60);
+            document.getElementById('timer').innerText = `Timer: ${minutes}m ${seconds}s`;
+            updateRealTimeStats();
+        }
+
+        function updateRealTimeStats() {
+            const typedText = document.getElementById('textInput').value;
+            const timeDiff = (new Date() - startTime) / 1000;
+            const wordCount = typedText.split(' ').filter(word => word.length > 0).length;
+            const wpm = Math.round(wordCount / (timeDiff / 60));
+            const accuracy = calculateAccuracy(typedText, selectedText);
+            document.getElementById('realTimeStats').innerHTML = `WPM: ${wpm} | Accuracy: ${accuracy.toFixed(2)}%`;
+            
+            if (typedText === selectedText) {
+                finishTest(); // Automatically finish the test when the text is completely typed
+            }
+        }
+
+        function toggleTimer() {
+            const timerDisplay = document.getElementById('timer');
+            timerDisplay.style.display = timerDisplay.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
